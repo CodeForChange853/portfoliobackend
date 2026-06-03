@@ -5,7 +5,12 @@ import psycopg2.extras
 
 def get_conn():
     url = os.environ.get('DATABASE_URL', '')
-    return psycopg2.connect(url, sslmode='require')
+    if not url:
+        raise RuntimeError('DATABASE_URL environment variable is not set')
+    # Render sometimes issues postgres:// — psycopg2 needs postgresql://
+    if url.startswith('postgres://'):
+        url = 'postgresql://' + url[len('postgres://'):]
+    return psycopg2.connect(url)
 
 
 def init_db():
