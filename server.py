@@ -108,7 +108,7 @@ def app(environ, start_response):
         # --- Projects ---
         if base == '/api/projects':
             if method == 'GET' and not rid:
-                return projects_handler.list_all(start_response, cors)
+                return projects_handler.list_all(start_response, cors, show_all=is_authed())
             if not is_authed():
                 return json_response(start_response, cors, {'error': 'Unauthorized'}, 401)
             if method == 'POST' and not rid:

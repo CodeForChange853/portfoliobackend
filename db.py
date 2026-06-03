@@ -58,6 +58,14 @@ def init_db():
                     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
                 )
             """)
+            # Columns added after initial deploy — safe to run on existing DB
+            for stmt in [
+                "ALTER TABLE projects ADD COLUMN IF NOT EXISTS type TEXT NOT NULL DEFAULT 'web'",
+                "ALTER TABLE projects ADD COLUMN IF NOT EXISTS subtitle TEXT NOT NULL DEFAULT ''",
+                "ALTER TABLE projects ADD COLUMN IF NOT EXISTS languages TEXT NOT NULL DEFAULT '[]'",
+                "ALTER TABLE projects ADD COLUMN IF NOT EXISTS stats TEXT NOT NULL DEFAULT '[]'",
+            ]:
+                cur.execute(stmt)
         conn.commit()
     finally:
         conn.close()

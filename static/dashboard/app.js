@@ -351,12 +351,17 @@ function projectsGrid(data) {
 
 function projectCard(p) {
   const tech = parseTechStack(p.tech_stack);
+  const typeLabel = p.type === 'app' ? 'Application' : 'Web · System';
   return `
     <div class="project-card glass" data-id="${p.id}">
       <div class="project-card-header">
         <h3>${esc(p.title)}</h3>
-        <span class="badge badge-${p.visible ? 'online' : 'offline'}">${p.visible ? 'LIVE' : 'HIDDEN'}</span>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <span class="badge badge-type-${esc(p.type || 'web')}">${typeLabel}</span>
+          <span class="badge badge-${p.visible ? 'online' : 'offline'}">${p.visible ? 'LIVE' : 'HIDDEN'}</span>
+        </div>
       </div>
+      ${p.subtitle ? `<p style="font-size:11px;color:var(--accent);margin:0 0 6px;font-family:var(--font-mono)">${esc(p.subtitle)}</p>` : ''}
       <p class="project-desc">${esc(p.description.substring(0,100))}${p.description.length > 100 ? '…' : ''}</p>
       <div class="tech-tags">${tech.map(t => `<span class="tech-tag">${esc(t)}</span>`).join('')}</div>
       <div class="project-links">
@@ -373,6 +378,8 @@ function projectCard(p) {
 function renderProjectForm(project = null) {
   const isEdit = !!project;
   const tech = project ? parseTechStack(project.tech_stack).join(', ') : '';
+  const langVal = project ? fmtJsonField(project.languages) : '';
+  const statsVal = project ? fmtJsonField(project.stats) : '';
   document.getElementById('project-form-area').innerHTML = `
     <div class="glass panel project-form">
       <h2>${isEdit ? 'EDIT PROJECT' : 'NEW PROJECT'}</h2>
@@ -382,8 +389,15 @@ function renderProjectForm(project = null) {
           <input type="text" id="pf-title" value="${esc(project?.title || '')}">
         </div>
         <div class="form-group">
-          <label>ORDER INDEX</label>
-          <input type="number" id="pf-order" value="${project?.order_index ?? 0}">
+          <label>TYPE</label>
+          <select id="pf-type">
+            <option value="web" ${(project?.type || 'web') === 'web' ? 'selected' : ''}>Web · System</option>
+            <option value="app" ${project?.type === 'app' ? 'selected' : ''}>Application</option>
+          </select>
+        </div>
+        <div class="form-group full-width">
+          <label>SUBTITLE</label>
+          <input type="text" id="pf-subtitle" value="${esc(project?.subtitle || '')}" placeholder="One-line tagline for the project">
         </div>
         <div class="form-group full-width">
           <label>DESCRIPTION *</label>
@@ -391,7 +405,7 @@ function renderProjectForm(project = null) {
         </div>
         <div class="form-group full-width">
           <label>TECH STACK (comma-separated)</label>
-          <input type="text" id="pf-tech" value="${esc(tech)}" placeholder="React, Node.js, PostgreSQL">
+          <input type="text" id="pf-tech" value="${esc(tech)}" placeholder="React, FastAPI, PostgreSQL">
         </div>
         <div class="form-group">
           <label>LIVE URL</label>
@@ -402,8 +416,12 @@ function renderProjectForm(project = null) {
           <input type="url" id="pf-github" value="${esc(project?.github_url || '')}">
         </div>
         <div class="form-group">
-          <label>IMAGE URL</label>
-          <input type="text" id="pf-image" value="${esc(project?.image || '')}">
+          <label>IMAGE PATH</label>
+          <input type="text" id="pf-image" value="${esc(project?.image || '')}" placeholder="/images/project.png">
+        </div>
+        <div class="form-group">
+          <label>ORDER INDEX</label>
+          <input type="number" id="pf-order" value="${project?.order_index ?? 0}">
         </div>
         <div class="form-group">
           <label>VISIBILITY</label>
@@ -411,6 +429,14 @@ function renderProjectForm(project = null) {
             <option value="true" ${project?.visible !== false ? 'selected' : ''}>VISIBLE</option>
             <option value="false" ${project?.visible === false ? 'selected' : ''}>HIDDEN</option>
           </select>
+        </div>
+        <div class="form-group full-width">
+          <label>LANGUAGE BARS — JSON <span style="opacity:.5;font-weight:400">[{"name":"React","pct":45},{"name":"Python","pct":40}]</span></label>
+          <textarea id="pf-languages" rows="3" placeholder='[{"name":"React","pct":45},{"name":"Python","pct":40}]'>${esc(langVal)}</textarea>
+        </div>
+        <div class="form-group full-width">
+          <label>STATS — JSON <span style="opacity:.5;font-weight:400">[["70%","Faster Reg."],["90%","Accuracy"]]</span></label>
+          <textarea id="pf-stats" rows="3" placeholder='[["70%","Faster Reg."],["Live","Deployed"]]'>${esc(statsVal)}</textarea>
         </div>
       </div>
       <div class="form-actions">
@@ -430,13 +456,17 @@ function renderProjectForm(project = null) {
 
     const payload = {
       title,
+      subtitle: document.getElementById('pf-subtitle').value.trim(),
       description,
+      type: document.getElementById('pf-type').value,
       tech_stack: document.getElementById('pf-tech').value.split(',').map(t => t.trim()).filter(Boolean),
       live_url: document.getElementById('pf-live').value.trim(),
       github_url: document.getElementById('pf-github').value.trim(),
       image: document.getElementById('pf-image').value.trim(),
       order_index: parseInt(document.getElementById('pf-order').value) || 0,
       visible: document.getElementById('pf-visible').value === 'true',
+      languages: parseJsonField(document.getElementById('pf-languages').value, []),
+      stats: parseJsonField(document.getElementById('pf-stats').value, []),
     };
 
     if (isEdit) {
@@ -552,6 +582,18 @@ function calcAvgRating(dist) {
 function parseTechStack(raw) {
   try { return JSON.parse(raw); }
   catch { return raw ? [raw] : []; }
+}
+
+function parseJsonField(raw, fallback) {
+  if (!raw || !raw.trim()) return fallback;
+  try { return JSON.parse(raw.trim()); }
+  catch { return fallback; }
+}
+
+function fmtJsonField(raw) {
+  if (!raw || raw === '[]' || raw === 'null') return '';
+  try { return JSON.stringify(JSON.parse(raw), null, 2); }
+  catch { return raw; }
 }
 
 function fmtDate(iso) {
