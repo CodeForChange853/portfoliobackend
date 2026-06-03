@@ -87,9 +87,9 @@ INITIAL_PROJECTS = [
 conn = db.get_conn()
 try:
     with conn.cursor() as cur:
-        cur.execute("SELECT COUNT(*) FROM projects")
-        count = cur.fetchone()[0]
-    if count == 0:
+        cur.execute("SELECT COUNT(*) FROM projects WHERE title='NexEnroll'")
+        already_seeded = cur.fetchone()[0] > 0
+    if not already_seeded:
         with conn.cursor() as cur:
             for p in INITIAL_PROJECTS:
                 cur.execute(
@@ -104,7 +104,7 @@ try:
         conn.commit()
         print(f"Seeded {len(INITIAL_PROJECTS)} initial projects.")
     else:
-        print(f"Projects already seeded ({count} rows) — skipping.")
+        print("Initial projects already present — skipping.")
 finally:
     conn.close()
 
