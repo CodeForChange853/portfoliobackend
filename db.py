@@ -1,17 +1,26 @@
+import time
 import os
 import psycopg2
 import psycopg2.extras
 
 
-def get_conn():
+def get_conn(retries=5, delay=3):
     url = os.environ.get('DATABASE_URL', '')
     if not url:
         raise RuntimeError('DATABASE_URL environment variable is not set')
     # Render sometimes issues postgres:// — psycopg2 needs postgresql://
     if url.startswith('postgres://'):
         url = 'postgresql://' + url[len('postgres://'):]
-    return psycopg2.connect(url)
-
+        
+    for attempt in range(retries):
+        try:
+            return psycopg2.connect(url)
+        except psycopg2.OperationalError as e:
+            if attempt < retries - 1:
+                print(f"Database connection failed (attempt {attempt+1}/{retries}). Retrying in {delay}s...")
+                time.sleep(delay)
+            else:
+                raise e
 
 def init_db():
     conn = get_conn()
