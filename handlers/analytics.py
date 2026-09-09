@@ -64,3 +64,25 @@ def stats(start_response, headers):
         })
     finally:
         conn.close()
+
+
+def public_stats(start_response, headers):
+    conn = db.get_conn()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "SELECT COUNT(*) as v FROM analytics WHERE event_type='view'"
+            )
+            views = int(cur.fetchone()['v'])
+            
+            cur.execute(
+                "SELECT COUNT(*) as h FROM analytics WHERE event_type='react' AND value='heart'"
+            )
+            hearts = int(cur.fetchone()['h'])
+
+        return json_response(start_response, headers, {
+            'views': views,
+            'hearts': hearts
+        })
+    finally:
+        conn.close()

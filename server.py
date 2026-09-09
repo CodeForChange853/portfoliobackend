@@ -122,6 +122,9 @@ def app(environ, start_response):
         if path == '/api/analytics/track' and method == 'POST':
             return analytics_handler.track(parse_body(), environ, start_response, cors)
 
+        if path == '/api/analytics/public' and method == 'GET':
+            return analytics_handler.public_stats(start_response, cors)
+
         if path == '/api/analytics/stats' and method == 'GET':
             if not is_authed():
                 return json_response(start_response, cors, {'error': 'Unauthorized'}, 401)
